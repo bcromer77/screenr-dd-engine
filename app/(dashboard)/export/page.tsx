@@ -1,5 +1,7 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { useScreenR } from "@/lib/screenr/store"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -8,31 +10,91 @@ import { Label } from "@/components/ui/label"
 import { 
   FileSpreadsheet, 
   FileText, 
-  Download, 
-  CheckCircle2, 
   AlertTriangle, 
-  FileDown,
-  Sparkles,
   ArrowRight,
-  Briefcase
+  Briefcase,
+  Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 export default function ExportPage() {
+  const params = useParams<{ dealId: string }>()
+  const dealId = params.dealId
+
+  const { getDeal, getVariables, logExport } = useScreenR()
+
   const [includeEvidence, setIncludeEvidence] = useState(true)
   const [includeConflicts, setIncludeConflicts] = useState(true)
   const [includeSnippets, setIncludeSnippets] = useState(false)
   const [exportFormat, setExportFormat] = useState<"xlsx" | "pdf" | null>(null)
   const [isExporting, setIsExporting] = useState(false)
 
-  const handleExport = (format: "xlsx" | "pdf") => {
+  const handleExport = async (format: "xlsx" | "pdf") => {
     setExportFormat(format)
     setIsExporting(true)
-    setTimeout(() => {
+
+    try {
+      if (!dealId) throw new Error("Missing dealId")
+
+      if (format === "pdf") {
+        const deal = getDeal?.(dealId)
+        const vars = getVariables?.(dealId) ?? []
+
+        const exportVars = vars
+          .map((v: any) => {
+            // Resolved values first
+            if (v.resolved?.value) {
+              const origin =
+                v.resolved.resolutionType === "ANALYST_SELECTED"
+                  ? "Analyst selected"
+                  : "Analyst provided"
+              return { label: v.label, value: v.resolved.value, origin }
+            }
+
+            // FOUND_SINGLE raw fallback
+            if (v.status === "FOUND_SINGLE" && v.rawValues?.[0]?.value) {
+              return { label: v.label, value: v.rawValues[0].value, origin: "Extracted" }
+            }
+
+            return null
+          })
+          .filter(Boolean)
+
+        const res = await fetch(`/api/deals/${dealId}/export.pdf`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dealName: deal?.name ?? `Deal ${dealId}`,
+            targetCompany: deal?.targetCompany ?? "Target Company",
+            variables: exportVars,
+            analyst: "Analyst",
+          }),
+        })
+
+        if (!res.ok) throw new Error(`PDF export failed: ${res.status}`)
+
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `ScreenR_${dealId}_${new Date().toISOString().slice(0, 10)}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+
+        logExport?.(dealId, { format: "pdf", includeEvidence, includeConflicts, includeSnippets })
+      } else {
+        // XLSX stub - implement later if needed
+        logExport?.(dealId, { format: "xlsx", includeEvidence, includeConflicts, includeSnippets })
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
       setIsExporting(false)
       setExportFormat(null)
-    }, 2000)
+    }
   }
 
   return (
