@@ -1,4 +1,4 @@
-// ProofLines DD Data Types
+// Tally R Data Types
 
 export type ExtractionStatus = "GREEN" | "ORANGE" | "RED"
 
@@ -55,4 +55,22 @@ export interface CoverageCell {
   source: string
   status: ExtractionStatus
   candidates: Candidate[]
+}
+
+export interface DocumentAssessment {
+  documentId: string
+  variableId: string
+  selectedValue: string | number
+  selectedSource: string
+  analystCommentary: string
+  assessedBy: string
+  assessedAt: string
+}
+
+export type CommitteeDecision = "Go" | "No-Go" | null
+
+export interface CommitteeRecord {
+  variableId: string
+  decision: CommitteeDecision
+  reason?: string
 }

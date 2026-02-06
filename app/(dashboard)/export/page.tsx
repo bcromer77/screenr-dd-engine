@@ -1,29 +1,22 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useScreenR } from "@/lib/screenr/store"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { 
-  FileSpreadsheet, 
-  FileText, 
-  AlertTriangle, 
+import {
+  FileSpreadsheet,
+  FileText,
+  AlertTriangle,
   ArrowRight,
   Briefcase,
-  Sparkles
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 export default function ExportPage() {
-  const params = useParams<{ dealId: string }>()
-  const dealId = params.dealId
-
-  const { getDeal, getVariables, logExport } = useScreenR()
-
   const [includeEvidence, setIncludeEvidence] = useState(true)
   const [includeConflicts, setIncludeConflicts] = useState(true)
   const [includeSnippets, setIncludeSnippets] = useState(false)
@@ -33,73 +26,13 @@ export default function ExportPage() {
   const handleExport = async (format: "xlsx" | "pdf") => {
     setExportFormat(format)
     setIsExporting(true)
-
-    try {
-      if (!dealId) throw new Error("Missing dealId")
-
-      if (format === "pdf") {
-        const deal = getDeal?.(dealId)
-        const vars = getVariables?.(dealId) ?? []
-
-        const exportVars = vars
-          .map((v: any) => {
-            // Resolved values first
-            if (v.resolved?.value) {
-              const origin =
-                v.resolved.resolutionType === "ANALYST_SELECTED"
-                  ? "Analyst selected"
-                  : "Analyst provided"
-              return { label: v.label, value: v.resolved.value, origin }
-            }
-
-            // FOUND_SINGLE raw fallback
-            if (v.status === "FOUND_SINGLE" && v.rawValues?.[0]?.value) {
-              return { label: v.label, value: v.rawValues[0].value, origin: "Extracted" }
-            }
-
-            return null
-          })
-          .filter(Boolean)
-
-        const res = await fetch(`/api/deals/${dealId}/export.pdf`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dealName: deal?.name ?? `Deal ${dealId}`,
-            targetCompany: deal?.targetCompany ?? "Target Company",
-            variables: exportVars,
-            analyst: "Analyst",
-          }),
-        })
-
-        if (!res.ok) throw new Error(`PDF export failed: ${res.status}`)
-
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `ScreenR_${dealId}_${new Date().toISOString().slice(0, 10)}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-
-        logExport?.(dealId, { format: "pdf", includeEvidence, includeConflicts, includeSnippets })
-      } else {
-        // XLSX stub - implement later if needed
-        logExport?.(dealId, { format: "xlsx", includeEvidence, includeConflicts, includeSnippets })
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setIsExporting(false)
-      setExportFormat(null)
-    }
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    setIsExporting(false)
+    setExportFormat(null)
   }
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Page header */}
       <div className="mb-8">
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
           Export
@@ -110,8 +43,7 @@ export default function ExportPage() {
       </div>
 
       <div className="grid gap-6">
-        {/* Export summary card */}
-        <Card className="border-border bg-card overflow-hidden">
+        <Card className="overflow-hidden border-border bg-card">
           <div className="border-b border-border bg-secondary/30 px-6 py-4">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Export Summary
@@ -120,38 +52,49 @@ export default function ExportPage() {
           <div className="grid grid-cols-4 divide-x divide-border">
             <div className="p-6 text-center">
               <div className="text-3xl font-semibold text-foreground">15</div>
-              <div className="mt-1 text-xs text-muted-foreground">Variables</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Variables
+              </div>
             </div>
             <div className="p-6 text-center">
-              <div className="text-3xl font-semibold text-status-green">11</div>
-              <div className="mt-1 text-xs text-muted-foreground">Extracted</div>
+              <div className="text-3xl font-semibold text-status-green">
+                11
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Extracted
+              </div>
             </div>
             <div className="p-6 text-center">
               <div className="flex items-center justify-center gap-2">
-                <div className="text-3xl font-semibold text-status-orange">2</div>
+                <div className="text-3xl font-semibold text-status-orange">
+                  2
+                </div>
                 <AlertTriangle className="h-5 w-5 text-status-orange" />
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">Conflicts</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Conflicts
+              </div>
             </div>
             <div className="p-6 text-center">
               <div className="text-3xl font-semibold text-foreground">5</div>
-              <div className="mt-1 text-xs text-muted-foreground">Documents</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Documents
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Export options card */}
         <Card className="border-border bg-card p-6">
           <h2 className="mb-6 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Export Options
           </h2>
 
           <div className="space-y-4">
-            <div 
+            <div
               className={cn(
-                "flex items-start gap-4 rounded-lg border p-4 transition-all cursor-pointer",
-                includeEvidence 
-                  ? "border-accent/30 bg-accent/5" 
+                "flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-all",
+                includeEvidence
+                  ? "border-accent/30 bg-accent/5"
                   : "border-border hover:border-border/80"
               )}
               onClick={() => setIncludeEvidence(!includeEvidence)}
@@ -159,24 +102,30 @@ export default function ExportPage() {
               <Checkbox
                 id="evidence"
                 checked={includeEvidence}
-                onCheckedChange={(checked) => setIncludeEvidence(checked as boolean)}
+                onCheckedChange={(checked) =>
+                  setIncludeEvidence(checked as boolean)
+                }
                 className="mt-0.5"
               />
               <div className="flex-1">
-                <Label htmlFor="evidence" className="text-foreground font-medium cursor-pointer">
+                <Label
+                  htmlFor="evidence"
+                  className="cursor-pointer font-medium text-foreground"
+                >
                   Include source evidence
                 </Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Document locations, page numbers, and cell references for each extraction
+                  Document locations, page numbers, and cell references for each
+                  extraction
                 </p>
               </div>
             </div>
 
-            <div 
+            <div
               className={cn(
-                "flex items-start gap-4 rounded-lg border p-4 transition-all cursor-pointer",
-                includeConflicts 
-                  ? "border-status-orange/30 bg-status-orange/5" 
+                "flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-all",
+                includeConflicts
+                  ? "border-status-orange/30 bg-status-orange/5"
                   : "border-border hover:border-border/80"
               )}
               onClick={() => setIncludeConflicts(!includeConflicts)}
@@ -184,24 +133,30 @@ export default function ExportPage() {
               <Checkbox
                 id="conflicts"
                 checked={includeConflicts}
-                onCheckedChange={(checked) => setIncludeConflicts(checked as boolean)}
+                onCheckedChange={(checked) =>
+                  setIncludeConflicts(checked as boolean)
+                }
                 className="mt-0.5"
               />
               <div className="flex-1">
-                <Label htmlFor="conflicts" className="text-foreground font-medium cursor-pointer">
+                <Label
+                  htmlFor="conflicts"
+                  className="cursor-pointer font-medium text-foreground"
+                >
                   Highlight conflicts
                 </Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Mark variables with conflicting values across documents in orange
+                  Mark variables with conflicting values across documents in
+                  orange
                 </p>
               </div>
             </div>
 
-            <div 
+            <div
               className={cn(
-                "flex items-start gap-4 rounded-lg border p-4 transition-all cursor-pointer",
-                includeSnippets 
-                  ? "border-accent/30 bg-accent/5" 
+                "flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-all",
+                includeSnippets
+                  ? "border-accent/30 bg-accent/5"
                   : "border-border hover:border-border/80"
               )}
               onClick={() => setIncludeSnippets(!includeSnippets)}
@@ -209,11 +164,16 @@ export default function ExportPage() {
               <Checkbox
                 id="snippets"
                 checked={includeSnippets}
-                onCheckedChange={(checked) => setIncludeSnippets(checked as boolean)}
+                onCheckedChange={(checked) =>
+                  setIncludeSnippets(checked as boolean)
+                }
                 className="mt-0.5"
               />
               <div className="flex-1">
-                <Label htmlFor="snippets" className="text-foreground font-medium cursor-pointer">
+                <Label
+                  htmlFor="snippets"
+                  className="cursor-pointer font-medium text-foreground"
+                >
                   Include text snippets
                 </Label>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -224,9 +184,8 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Export buttons */}
         <div className="grid grid-cols-2 gap-4">
-          <Card 
+          <Card
             className={cn(
               "group cursor-pointer border-border bg-card p-6 transition-all hover:border-status-green/50",
               exportFormat === "xlsx" && isExporting && "border-status-green"
@@ -239,19 +198,23 @@ export default function ExportPage() {
                   <FileSpreadsheet className="h-6 w-6 text-status-green" />
                 </div>
                 <div>
-                  <div className="font-semibold text-foreground">Export XLSX</div>
-                  <div className="text-xs text-muted-foreground">Excel spreadsheet</div>
+                  <div className="font-semibold text-foreground">
+                    Export XLSX
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Excel spreadsheet
+                  </div>
                 </div>
               </div>
               {exportFormat === "xlsx" && isExporting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-status-green border-t-transparent" />
               ) : (
-                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-1" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
               )}
             </div>
           </Card>
 
-          <Card 
+          <Card
             className={cn(
               "group cursor-pointer border-border bg-card p-6 transition-all hover:border-status-red/50",
               exportFormat === "pdf" && isExporting && "border-status-red"
@@ -264,20 +227,23 @@ export default function ExportPage() {
                   <FileText className="h-6 w-6 text-status-red" />
                 </div>
                 <div>
-                  <div className="font-semibold text-foreground">Export PDF</div>
-                  <div className="text-xs text-muted-foreground">Formatted report</div>
+                  <div className="font-semibold text-foreground">
+                    Export PDF
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Formatted report
+                  </div>
                 </div>
               </div>
               {exportFormat === "pdf" && isExporting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-status-red border-t-transparent" />
               ) : (
-                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-1" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
               )}
             </div>
           </Card>
         </div>
 
-        {/* Deal Room CTA */}
         <Card className="border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -286,7 +252,9 @@ export default function ExportPage() {
               </div>
               <div>
                 <div className="font-semibold text-foreground">Deal Room</div>
-                <div className="text-xs text-muted-foreground">Compare deals and access historical screenings</div>
+                <div className="text-xs text-muted-foreground">
+                  Compare deals and access historical screenings
+                </div>
               </div>
             </div>
             <Link href="/deal-room">
@@ -298,13 +266,13 @@ export default function ExportPage() {
           </div>
         </Card>
 
-        {/* Pro tip */}
         <div className="flex items-start gap-3 rounded-lg border border-accent/20 bg-accent/5 p-4">
-          <Sparkles className="h-5 w-5 text-accent mt-0.5" />
+          <Sparkles className="mt-0.5 h-5 w-5 text-accent" />
           <div>
             <div className="text-sm font-medium text-foreground">Pro tip</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              XLSX exports include formulas for easy analysis. PDF exports are optimized for printing and sharing with stakeholders.
+              XLSX exports include formulas for easy analysis. PDF exports are
+              optimized for printing and sharing with stakeholders.
             </p>
           </div>
         </div>

@@ -52,7 +52,7 @@ export function AppSidebar() {
           <Sparkles className="h-4 w-4 text-accent-foreground" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-sidebar-primary">ProofLines</span>
+          <span className="text-sm font-semibold text-sidebar-primary">Tally R</span>
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Due Diligence</span>
         </div>
       </div>

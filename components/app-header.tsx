@@ -13,7 +13,7 @@ export function AppHeader() {
             <Command className="h-4 w-4 text-accent-foreground" />
           </div>
           <span className="text-sm font-semibold tracking-tight text-foreground">
-            ProofLines DD
+            Tally R
           </span>
         </div>
         

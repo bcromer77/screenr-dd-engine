@@ -30,7 +30,7 @@ export default function DealsPage() {
           <Link href="/">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
               <Home className="h-4 w-4" />
-              ProofLines
+              Tally R
             </Button>
           </Link>
           <Link href="/compare">

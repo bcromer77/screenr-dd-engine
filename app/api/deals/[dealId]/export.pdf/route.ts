@@ -8,6 +8,9 @@ function generatePDF(content: {
     label: string
     value: string
     origin: string
+    sourceDocument?: string
+    justification?: string
+    committeeDecision?: string
   }>
   generatedAt: string
   analyst: string
@@ -53,21 +56,29 @@ function generatePDF(content: {
   yPosition -= 20
 
   // Variables header
-  addText("Variable", 50, yPosition, 10)
-  addText("Value", 250, yPosition, 10)
-  addText("Origin", 450, yPosition, 10)
+  addText("Variable", 50, yPosition, 9)
+  addText("Value", 180, yPosition, 9)
+  addText("Source", 290, yPosition, 9)
+  addText("Decision", 420, yPosition, 9)
   yPosition -= 5
   contentLines.push(`50 ${yPosition} m 550 ${yPosition} l S`)
   yPosition -= lineHeight
 
   // Variables
   for (const v of content.variables) {
-    if (yPosition < 100) break // Stop if we run out of page space
+    if (yPosition < 120) break // Stop if we run out of page space
 
-    addText(v.label.substring(0, 30), 50, yPosition, 9)
-    addText(v.value.substring(0, 25), 250, yPosition, 9)
-    addText(v.origin, 450, yPosition, 8)
+    addText(v.label.substring(0, 22), 50, yPosition, 8)
+    addText(v.value.substring(0, 18), 180, yPosition, 8)
+    addText((v.sourceDocument || v.origin).substring(0, 20), 290, yPosition, 8)
+    addText(v.committeeDecision || "-", 420, yPosition, 8)
     yPosition -= lineHeight
+
+    // Add justification line if present
+    if (v.justification) {
+      addText(`Rationale: ${v.justification.substring(0, 70)}`, 60, yPosition, 7)
+      yPosition -= lineHeight
+    }
   }
 
   // Footer

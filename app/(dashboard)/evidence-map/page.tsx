@@ -3,7 +3,8 @@
 import React from "react"
 import { useState, useMemo, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { MOCK_VARIABLES, MOCK_CANDIDATES, MOCK_FILES, computeStatus } from "@/lib/mock-data"
+import { MOCK_VARIABLES, MOCK_CANDIDATES, MOCK_FILES, MOCK_ASSESSMENTS, computeStatus } from "@/lib/mock-data"
+import type { DocumentAssessment } from "@/lib/types"
 import { Card } from "@/components/ui/card"
 import {
   Table,
@@ -16,7 +17,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusPill } from "@/components/status-pill"
 import { cn } from "@/lib/utils"
-import { FileText, FileSpreadsheet, Presentation, Mail, ExternalLink, Eye, Grid3X3 } from "lucide-react"
+import { FileText, FileSpreadsheet, Presentation, Mail, ExternalLink, Eye, Grid3X3, UserPlus, X, Send, Check, Copy } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { ExtractionStatus } from "@/lib/types"
@@ -32,6 +34,119 @@ function EvidenceMapContent() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"detail" | "matrix">("detail")
 
+  // Analyst assessment state
+  const [assessments, setAssessments] = useState<DocumentAssessment[]>(MOCK_ASSESSMENTS)
+  const [rationale, setRationale] = useState("")
+
+  const candidates = useMemo(() => {
+    return MOCK_CANDIDATES.filter((c) => c.variableId === selectedVariableId)
+  }, [selectedVariableId])
+
+  // Get existing assessment for the current variable
+  const currentAssessment = assessments.find(
+    (a) => a.variableId === selectedVariableId
+  )
+
+  // Selected value for the current variable (from assessment or from selected source)
+  const selectedValueCandidateId = currentAssessment
+    ? candidates.find((c) => c.source === currentAssessment.selectedSource)?.id || null
+    : null
+
+  const handleSelectValue = (candidateId: string) => {
+    const candidate = candidates.find((c) => c.id === candidateId)
+    if (!candidate) return
+
+    const existingIdx = assessments.findIndex(
+      (a) => a.variableId === selectedVariableId
+    )
+    const newAssessment: DocumentAssessment = {
+      documentId: candidateId,
+      variableId: selectedVariableId,
+      selectedValue: candidate.value,
+      selectedSource: candidate.source,
+      analystCommentary: rationale || currentAssessment?.analystCommentary || "",
+      assessedBy: "bazil.cromer",
+      assessedAt: new Date().toISOString(),
+    }
+
+    if (existingIdx >= 0) {
+      const updated = [...assessments]
+      updated[existingIdx] = newAssessment
+      setAssessments(updated)
+    } else {
+      setAssessments([...assessments, newAssessment])
+    }
+  }
+
+  const handleSaveRationale = () => {
+    if (!currentAssessment) return
+    const updated = assessments.map((a) =>
+      a.variableId === selectedVariableId
+        ? { ...a, analystCommentary: rationale, assessedAt: new Date().toISOString() }
+        : a
+    )
+    setAssessments(updated)
+  }
+
+  // Sharing state
+  interface SharedColleague {
+    email: string
+    sharedAt: string
+    variableId: string
+  }
+  const [sharedWith, setSharedWith] = useState<SharedColleague[]>([])
+  const [colleagueEmail, setColleagueEmail] = useState("")
+  const [shareMessage, setShareMessage] = useState("")
+  const [showSharePanel, setShowSharePanel] = useState(false)
+  const [justCopied, setJustCopied] = useState(false)
+  const [justShared, setJustShared] = useState<string | null>(null)
+
+  const currentShares = sharedWith.filter(
+    (s) => s.variableId === selectedVariableId
+  )
+
+  const handleShare = () => {
+    if (!colleagueEmail.trim()) return
+    const newShare: SharedColleague = {
+      email: colleagueEmail.trim(),
+      sharedAt: new Date().toISOString(),
+      variableId: selectedVariableId,
+    }
+    setSharedWith([...sharedWith, newShare])
+    setJustShared(colleagueEmail.trim())
+    setColleagueEmail("")
+    setShareMessage("")
+    setTimeout(() => setJustShared(null), 2000)
+  }
+
+  const handleRemoveShare = (email: string) => {
+    setSharedWith(
+      sharedWith.filter(
+        (s) => !(s.email === email && s.variableId === selectedVariableId)
+      )
+    )
+  }
+
+  const handleCopyLink = () => {
+    const text = [
+      `Variable: ${selectedVariable?.name}`,
+      currentAssessment
+        ? `Selected Value: ${formatValue(currentAssessment.selectedValue)} from ${currentAssessment.selectedSource}`
+        : "",
+      currentAssessment?.analystCommentary
+        ? `Rationale: ${currentAssessment.analystCommentary}`
+        : rationale
+          ? `Rationale: ${rationale}`
+          : "",
+      shareMessage ? `Note: ${shareMessage}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n")
+    navigator.clipboard.writeText(text)
+    setJustCopied(true)
+    setTimeout(() => setJustCopied(false), 2000)
+  }
+
   // Compute status for all variables
   const variablesWithStatus = useMemo(() => {
     return MOCK_VARIABLES.map((variable) => {
@@ -45,10 +160,6 @@ function EvidenceMapContent() {
   }, [])
 
   const selectedVariable = variablesWithStatus.find((v) => v.id === selectedVariableId)
-
-  const candidates = useMemo(() => {
-    return MOCK_CANDIDATES.filter((c) => c.variableId === selectedVariableId)
-  }, [selectedVariableId])
 
   const fileForSource = (sourceName: string | undefined) =>
     MOCK_FILES.find((f) => f.name === sourceName)
@@ -297,10 +408,10 @@ function EvidenceMapContent() {
                           )}
                           style={{ animationDelay: `${index * 50}ms` }}
                           onClick={() => {
-                          setSelectedSource(candidate.id)
-                          const f = fileForSource(candidate.source)
-                          if (f?.type) setSelectedDocType(f.type)
-                        }}
+                            setSelectedSource(candidate.id)
+                            const f = fileForSource(candidate.source)
+                            if (f?.type) setSelectedDocType(f.type)
+                          }}
                         >
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -434,6 +545,232 @@ function EvidenceMapContent() {
                   </div>
                 </TabsContent>
               </Tabs>
+
+              {/* Analyst Selection + Rationale */}
+              {candidates.length > 1 && (
+                <div className="mt-6 space-y-4">
+                  {/* Value selection */}
+                  <div>
+                    <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Analyst Selection
+                    </div>
+                    <div className="space-y-2">
+                      {candidates.map((candidate) => {
+                        const isSelected = selectedValueCandidateId === candidate.id
+                        return (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            onClick={() => handleSelectValue(candidate.id)}
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm transition-all",
+                              isSelected
+                                ? "border-accent bg-accent/10 text-foreground"
+                                : "border-border bg-secondary/20 text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                                isSelected
+                                  ? "border-accent bg-accent"
+                                  : "border-muted-foreground/40"
+                              )}
+                            >
+                              {isSelected && (
+                                <div className="h-1.5 w-1.5 rounded-full bg-accent-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <span className="font-mono font-semibold">
+                                {formatValue(candidate.value)}
+                                {candidate.unit && (
+                                  <span className="ml-1 font-sans font-normal text-muted-foreground">
+                                    {candidate.unit}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                via {candidate.source}
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {currentAssessment && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        This document supports value:{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {formatValue(currentAssessment.selectedValue)}
+                        </span>{" "}
+                        from {currentAssessment.selectedSource}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Source justification */}
+                  <div>
+                    <label
+                      htmlFor="rationale"
+                      className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    >
+                      Your Notes
+                    </label>
+
+                    {/* Previously published note */}
+                    {currentAssessment?.analystCommentary && (
+                      <div className="mb-3 rounded-lg border border-border bg-secondary/20 p-3">
+                        <div className="mb-1 flex items-center justify-between">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Published
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(currentAssessment.assessedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm leading-relaxed text-foreground/80">
+                          {currentAssessment.analystCommentary}
+                        </p>
+                      </div>
+                    )}
+
+                    <textarea
+                      id="rationale"
+                      rows={4}
+                      value={rationale}
+                      onChange={(e) => setRationale(e.target.value)}
+                      placeholder="Type your justification for this selection..."
+                      className="w-full rounded-lg border border-border bg-input p-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <div className="mt-2 flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSharePanel(!showSharePanel)}
+                        className="gap-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Share with colleague
+                        {currentShares.length > 0 && (
+                          <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                            {currentShares.length}
+                          </span>
+                        )}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCopyLink}
+                          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {justCopied ? (
+                            <>
+                              <Check className="h-3 w-3 text-status-green" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            handleSaveRationale()
+                            setRationale("")
+                          }}
+                          disabled={!rationale.trim()}
+                          className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          Publish
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Share panel */}
+                  {showSharePanel && (
+                    <div className="animate-fade-in rounded-lg border border-border bg-secondary/30 p-4">
+                      <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Share This Assessment
+                      </div>
+
+                      {/* Current shares */}
+                      {currentShares.length > 0 && (
+                        <div className="mb-4 space-y-2">
+                          {currentShares.map((share) => (
+                            <div
+                              key={share.email}
+                              className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
+                                  {share.email.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-sm text-foreground">{share.email}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Shared {new Date(share.sharedAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveShare(share.email)}
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add colleague */}
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            value={colleagueEmail}
+                            onChange={(e) => setColleagueEmail(e.target.value)}
+                            placeholder="colleague@firm.com"
+                            className="border-border bg-input text-foreground placeholder:text-muted-foreground/60"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleShare()
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={handleShare}
+                            disabled={!colleagueEmail.trim()}
+                            className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-40"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            Send
+                          </Button>
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={shareMessage}
+                          onChange={(e) => setShareMessage(e.target.value)}
+                          placeholder="Add a note (optional)..."
+                          className="w-full rounded-lg border border-border bg-input p-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+
+                      {/* Shared confirmation toast */}
+                      {justShared && (
+                        <div className="mt-3 flex items-center gap-2 rounded-md border border-status-green/30 bg-status-green/10 px-3 py-2 text-sm text-status-green animate-fade-in">
+                          <Check className="h-4 w-4" />
+                          Assessment shared with {justShared}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </Card>

@@ -21,7 +21,7 @@ export default function LoginPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent">
             <Command className="h-6 w-6 text-accent-foreground" />
           </div>
-          <h1 className="mt-4 text-xl font-semibold text-foreground">ProofLines DD</h1>
+          <h1 className="mt-4 text-xl font-semibold text-foreground">Tally R</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Evidence Rooms for Private Equity
           </p>

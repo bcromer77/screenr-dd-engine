@@ -589,6 +589,57 @@ export const MOCK_CANDIDATES: Candidate[] = [
   },
 ]
 
+// ---- Analyst Assessments (pre-populated for demo) ----
+import type { DocumentAssessment, CommitteeRecord } from "./types"
+
+export const MOCK_ASSESSMENTS: DocumentAssessment[] = [
+  {
+    documentId: "c4",
+    variableId: "ebitda-n1",
+    selectedValue: 8300000,
+    selectedSource: "CIM.pdf",
+    analystCommentary:
+      "CIM figure of 8.3m aligns with management commentary on Slide 14. Model figure of 7.9m appears to exclude one-off adjustments referenced in the CIM footnotes.",
+    assessedBy: "bazil.cromer",
+    assessedAt: "2024-01-18T14:30:00Z",
+  },
+  {
+    documentId: "c6",
+    variableId: "top-customer",
+    selectedValue: 22,
+    selectedSource: "Audited_Accounts.pdf",
+    analystCommentary:
+      "Audited Accounts provide the most conservative and independently verified figure at 22%. CIM figure of 18% likely excludes related-party sub-contracts.",
+    assessedBy: "bazil.cromer",
+    assessedAt: "2024-01-18T15:10:00Z",
+  },
+]
+
+export const MOCK_COMMITTEE_DECISIONS: CommitteeRecord[] = [
+  {
+    variableId: "revenue-n1",
+    decision: "Go",
+  },
+  {
+    variableId: "ebitda-n1",
+    decision: "Go",
+    reason: "Margin acceptable at CIM-reported level",
+  },
+  {
+    variableId: "top-customer",
+    decision: "No-Go",
+    reason: "Concentration risk above 20% threshold",
+  },
+  {
+    variableId: "employee-count",
+    decision: "Go",
+  },
+  {
+    variableId: "net-debt",
+    decision: "Go",
+  },
+]
+
 // Helper to compute status from candidates
 export function computeStatus(
   candidates: Candidate[]

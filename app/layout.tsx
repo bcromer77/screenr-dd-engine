@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'ProofLines DD',
+  title: 'Tally R',
   description: 'PE Due Diligence Extraction Engine - From Documents to Proof',
   generator: 'v0.app',
   icons: {
